@@ -7,6 +7,7 @@
  */
 #include "sched.h"
 
+#include <linux/kfifo.h>
 #include <linux/nospec.h>
 
 #include <linux/kcov.h>
@@ -63,6 +64,11 @@ int sysctl_sched_rt_runtime = 950000;
 /*
  * __task_rq_lock - lock the rq @p resides on.
  */
+
+static void add_fifo_task(struct fifo_rq *fifo_rq, struct task_struct *p){
+    kfifo_in(fifo_rq->fifo, p, sizeof(struct task_struct));
+}
+
 struct rq *__task_rq_lock(struct task_struct *p, struct rq_flags *rf)
 	__acquires(rq->lock)
 {
@@ -4095,6 +4101,12 @@ static void __setscheduler(struct rq *rq, struct task_struct *p,
 		p->sched_class = &rt_sched_class;
 	else
 		p->sched_class = &fair_sched_class;
+
+    #ifdef CONFIG_SCHED_FIFO
+    if(p->policy == SCHED_FIFOSO){
+        p->sched_class = &myfifo_sched_class;
+    }
+    #endif
 }
 
 /*
@@ -4323,6 +4335,13 @@ change:
 		dequeue_task(rq, p, queue_flags);
 	if (running)
 		put_prev_task(rq, p);
+    
+    #ifdef CONFIG_SCHED_FIFO
+    if(policy == SCHED_FIFOSO){
+        add_fifo_task(&rq->fifo_rq, p);
+    }
+    #endif
+
 
 	prev_class = p->sched_class;
 	__setscheduler(rq, p, attr, pi);

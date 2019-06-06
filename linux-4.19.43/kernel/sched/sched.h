@@ -3,6 +3,7 @@
  * Scheduler internal types and methods:
  */
 #include <linux/sched.h>
+#include <linux/kfifo.h>
 
 #include <linux/sched/autogroup.h>
 #include <linux/sched/clock.h>
@@ -809,6 +810,10 @@ struct rq {
 	struct rt_rq		rt;
 	struct dl_rq		dl;
 
+#ifdef CONFIG_SCHED_FIFO
+    struct fifo_rq      fifo;
+#endif
+
 #ifdef CONFIG_FAIR_GROUP_SCHED
 	/* list of leaf cfs_rq on this CPU: */
 	struct list_head	leaf_cfs_rq_list;
@@ -896,6 +901,11 @@ struct rq {
 	struct sched_info	rq_sched_info;
 	unsigned long long	rq_cpu_time;
 	/* could above be rq->cfs_rq.exec_clock + rq->rt_rq.rt_runtime ? */
+    
+    struct fifo_rq {
+        struct kfifo *fifo;
+        unsigned long nr_running;
+    };
 
 	/* sys_sched_yield() stats */
 	unsigned int		yld_count;
